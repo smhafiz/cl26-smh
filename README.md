@@ -1,6 +1,6 @@
 # Three Round Threshold ECDSA based  Threshold CL Encryption
 
-This project provides the proof-of-concept implementation for the [Three-Round (Robust) Threshold ECDSA from Threshold CL Encryption][Three-Round (Robust) Threshold ECDSA from Threshold CL Encryption], and includes two versions corresponding to different security properties of threshold ECDSA signature protocols:
+This project provides the proof-of-concept implementation for the [Three-Round (Robust) Threshold ECDSA from Threshold CL Encryption](https://dl.acm.org/doi/10.1007/978-981-96-9095-4_12), and includes two versions corresponding to different security properties of threshold ECDSA signature protocols:
 
 - The **`main`** branch implements the **TECDSA-Normal** protocol.
 
