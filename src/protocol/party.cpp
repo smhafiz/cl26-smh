@@ -6,21 +6,19 @@ namespace trecdsa {
 
 Party::Party(GroupParams& params,
              size_t id,
-             const CL_HSMqk::PublicKey& class_group_public_key,
+             CL_HSMqk::PublicKey class_group_public_key,
              const std::vector<CL_HSMqk::PublicKey>& class_group_public_key_shares,
-             const CL_HSMqk::SecretKey& class_group_secret_key_share,
+             CL_HSMqk::SecretKey class_group_secret_key_share,
              const OpenSSL::ECPoint& ec_public_key,
              std::vector<OpenSSL::ECPoint>& ec_public_key_shares,
-             const OpenSSL::BN& ec_secret_key_share)
+             OpenSSL::BN ec_secret_key_share)
     : params_(params),
       id_(id),
-      class_group_public_key_(class_group_public_key),
+      class_group_public_key_(std::move(class_group_public_key)),
       class_group_public_key_shares_(class_group_public_key_shares),
-      ec_public_key_shares_(),
       ec_public_key_(params.impl().ec_group, ec_public_key),
-      class_group_secret_key_share_(class_group_secret_key_share),
-      ec_secret_key_share_(ec_secret_key_share),
-      active_party_set_() {
+      class_group_secret_key_share_(std::move(class_group_secret_key_share)),
+      ec_secret_key_share_(std::move(ec_secret_key_share)) {
     const size_t n = params_.impl().n;
     ec_public_key_shares_.reserve(n);
     for (size_t i = 0; i < n; ++i) {

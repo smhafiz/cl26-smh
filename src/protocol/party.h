@@ -145,12 +145,12 @@ class Party {
 public:
     Party(GroupParams& params,
           size_t id,
-          const CL_HSMqk::PublicKey& class_group_public_key,
+          CL_HSMqk::PublicKey class_group_public_key,
           const std::vector<CL_HSMqk::PublicKey>& class_group_public_key_shares,
-          const CL_HSMqk::SecretKey& class_group_secret_key_share,
+          CL_HSMqk::SecretKey class_group_secret_key_share,
           const OpenSSL::ECPoint& ec_public_key,
           std::vector<OpenSSL::ECPoint>& ec_public_key_shares,
-          const OpenSSL::BN& ec_secret_key_share);
+          OpenSSL::BN ec_secret_key_share);
 
     void set_party_set(const std::set<size_t>& party_set);
 
