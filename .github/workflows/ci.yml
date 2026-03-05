@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: ^3.29.0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ make libgmp-dev libssl-dev clang-tidy
+
+      - name: Show tool versions
+        run: |
+          cmake --version
+          c++ --version
+          clang-tidy --version
+
+      - name: Configure
+        run: cmake -S . -B build -DTRECDSA_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Lint (clang-tidy)
+        run: |
+          clang-tidy -p build \
+            apps/cli/main.cpp \
+            src/Party.cpp \
+            src/Protocol.cpp \
+            src/Utils.cpp \
+            tests/smoke_test.cpp \
+            tests/failure_test.cpp \
+            tests/api_test.cpp
+
+  warnings-as-errors:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: ^3.29.0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ make libgmp-dev libssl-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DTRECDSA_BUILD_TESTS=ON -DTRECDSA_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    runs-on: ubuntu-24.04
+    env:
+      CC: clang
+      CXX: clang++
+      ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: ^3.29.0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang make libgmp-dev libssl-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DTRECDSA_BUILD_TESTS=ON -DTRECDSA_ENABLE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
