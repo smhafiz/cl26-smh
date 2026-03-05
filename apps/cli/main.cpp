@@ -1,22 +1,20 @@
-#include <sstream>
-#include <iostream>
 #include <chrono>
+#include <iostream>
+#include <set>
+#include <vector>
 
 #include <trecdsa/Protocol.h>
 #include <trecdsa/Utils.h>
 
-int main()
-{
-    trecdsa::RandGen rng;
-    size_t n = 5;
-    size_t t = 4;
+int main() {
+    const size_t n = 5;
+    const size_t t = 4;
 
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, n, t, rng);
-
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, n, t);
     trecdsa::Protocol protocol(params);
-    protocol.dkg();
+    protocol.run_dkg();
 
-    std::set<size_t> party_set = trecdsa::select_parties(rng, n, t);
+    std::set<size_t> party_set = trecdsa::select_parties(n, t);
     std::vector<unsigned char> message;
     trecdsa::randomize_message(message);
 
@@ -26,19 +24,16 @@ int main()
     }
     std::cout << std::endl;
 
-    auto start = std::chrono::high_resolution_clock::now();
-    std::vector<trecdsa::Signature> signature_set;
-    protocol.run(party_set, message, signature_set);
-    auto end = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::high_resolution_clock::now();
+    std::vector<trecdsa::Signature> signatures;
+    protocol.run(party_set, message, signatures);
+    const auto end = std::chrono::high_resolution_clock::now();
 
-    bool ret = protocol.verify(signature_set, message);
-    if (ret)
-    {
-        std::chrono::duration<double> duration = end - start;
-        std::cout << "run success in " << duration.count() / static_cast<double>(t+1) << " s" << std::endl;
-    }
-    else
-    {
+    if (protocol.verify(signatures, message)) {
+        const std::chrono::duration<double> duration = end - start;
+        std::cout << "run success in "
+                  << duration.count() / static_cast<double>(t + 1) << " s" << std::endl;
+    } else {
         std::cout << "run fail" << std::endl;
     }
 

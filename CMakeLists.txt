@@ -5,7 +5,7 @@ option(TRECDSA_BUILD_TESTS "Build tests" ON)
 option(TRECDSA_WARNINGS_AS_ERRORS "Treat warnings as errors for project targets" OFF)
 option(TRECDSA_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -26,10 +26,9 @@ find_library(GMPXX_LIBRARY gmpxx REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 add_library(trecdsa_project_options INTERFACE)
-target_compile_features(trecdsa_project_options INTERFACE cxx_std_14)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(trecdsa_project_options INTERFACE -Wall -Wextra -Wpedantic)
+    target_compile_options(trecdsa_project_options INTERFACE -Wall -Wextra -Wpedantic -Wconversion)
     if(TRECDSA_WARNINGS_AS_ERRORS)
         target_compile_options(trecdsa_project_options INTERFACE -Werror)
     endif()
@@ -49,9 +48,11 @@ elseif(MSVC)
     endif()
 endif()
 
-add_library(trecdsa_core SHARED
+add_library(trecdsa_core
     src/protocol/protocol_unit.cpp
 )
+
+target_compile_features(trecdsa_core PUBLIC cxx_std_17)
 
 target_include_directories(trecdsa_core
     PUBLIC
@@ -61,17 +62,18 @@ target_include_directories(trecdsa_core
 )
 
 target_link_libraries(trecdsa_core
-    PUBLIC
+    PRIVATE
         trecdsa_project_options
         bicycl
         ${GMP_LIBRARY}
         ${GMPXX_LIBRARY}
-        OpenSSL::Crypto
         OpenSSL::SSL
+    PUBLIC
+        OpenSSL::Crypto
 )
 
 add_executable(trecdsa_cli apps/cli/main.cpp)
-target_link_libraries(trecdsa_cli PRIVATE trecdsa_core)
+target_link_libraries(trecdsa_cli PRIVATE trecdsa_core trecdsa_project_options)
 set_target_properties(trecdsa_cli PROPERTIES OUTPUT_NAME Three-Round-Multiparty-ECDSA)
 
 if(TRECDSA_BUILD_TESTS)

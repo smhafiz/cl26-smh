@@ -8,10 +8,9 @@ int main() {
     const size_t party_count = 5;
     const size_t threshold = 2;
 
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, party_count, threshold, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, party_count, threshold);
     trecdsa::Protocol protocol(params);
-    protocol.dkg();
+    protocol.run_dkg();
 
     const std::set<size_t> selected_parties = {1, 2, 3};
     std::vector<unsigned char> message;

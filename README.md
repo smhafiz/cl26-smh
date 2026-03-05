@@ -9,9 +9,9 @@ This repository provides a proof-of-concept implementation of three-round thresh
 
 ## Dependency Pinning
 
-Current vendored dependency in this workspace:
+Current pinned revisions in this workspace:
 
-- `bicycl`: local snapshot under `include/bicycl`
+- `bicycl`: `6fae8aed10e08a517c9ebf0405020343d134c25e`
 
 ## Building
 

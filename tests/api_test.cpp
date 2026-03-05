@@ -8,15 +8,17 @@
 namespace {
 
 bool expect_public_api_getters_work() {
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, 5, 2, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, 5, 2);
     trecdsa::Protocol protocol(params);
 
-    if (protocol.params().n != 5) {
+    if (protocol.party_count() != 5) {
+        return false;
+    }
+    if (protocol.threshold() != 2) {
         return false;
     }
 
-    protocol.dkg();
+    protocol.run_dkg();
 
     if (protocol.party_count() != 5) {
         return false;
@@ -26,16 +28,16 @@ bool expect_public_api_getters_work() {
 }
 
 bool expect_run_overloads_match() {
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, 5, 2, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, 5, 2);
     trecdsa::Protocol protocol(params);
-    protocol.dkg();
+    protocol.run_dkg();
 
     const std::set<size_t> selected_parties = {1, 2, 3};
     std::vector<unsigned char> message;
     trecdsa::randomize_message(message);
 
-    const std::vector<trecdsa::Signature> signatures_by_return = protocol.run(selected_parties, message);
+    const std::vector<trecdsa::Signature> signatures_by_return =
+        protocol.run(selected_parties, message);
 
     std::vector<trecdsa::Signature> signatures_by_output;
     protocol.run(selected_parties, message, signatures_by_output);
@@ -45,8 +47,7 @@ bool expect_run_overloads_match() {
 }
 
 bool expect_verify_without_dkg_throw() {
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, 5, 2, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, 5, 2);
     trecdsa::Protocol protocol(params);
 
     std::vector<trecdsa::Signature> signatures;
@@ -61,7 +62,7 @@ bool expect_verify_without_dkg_throw() {
     }
 }
 
-} // namespace
+}
 
 int main() {
     if (!expect_public_api_getters_work()) return 1;

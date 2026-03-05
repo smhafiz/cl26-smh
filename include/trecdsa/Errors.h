@@ -10,6 +10,6 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-} // namespace trecdsa
+}
 
-#endif // TRECDSA_ERRORS_H
+#endif

@@ -2,17 +2,40 @@
 #define TRECDSA_UTILS_H
 
 #include <set>
+#include <stdexcept>
 #include <vector>
 
-#include <trecdsa/Types.h>
+#include <openssl/rand.h>
 
 namespace trecdsa {
 
-void randomize_message(std::vector<unsigned char>& m);
-Mpz cl_lagrange_at_zero(const std::set<size_t>& S, size_t i, const Mpz& delta);
-BICYCL::OpenSSL::BN lagrange_at_zero(const BICYCL::OpenSSL::ECGroup& E, const std::set<size_t>& S, size_t i);
-std::set<size_t> select_parties(RandGen& rng, size_t n, size_t t);
+inline void randomize_message(std::vector<unsigned char>& m) {
+    unsigned char size_byte;
+    if (RAND_bytes(&size_byte, 1) != 1) {
+        throw std::runtime_error("RAND_bytes failed");
+    }
+    const size_t size = (size_byte < 4) ? 4 : size_byte;
+    m.resize(size);
+    if (RAND_bytes(m.data(), static_cast<int>(size)) != 1) {
+        throw std::runtime_error("RAND_bytes failed");
+    }
+}
 
-} // namespace trecdsa
+inline std::set<size_t> select_parties(size_t n, size_t t) {
+    if (t >= n) {
+        throw std::invalid_argument("t cannot be greater than n-1");
+    }
+    std::set<size_t> parties;
+    while (parties.size() < t + 1) {
+        unsigned int r;
+        if (RAND_bytes(reinterpret_cast<unsigned char*>(&r), sizeof(r)) != 1) {
+            throw std::runtime_error("RAND_bytes failed");
+        }
+        parties.insert(r % n + 1);
+    }
+    return parties;
+}
 
-#endif // TRECDSA_UTILS_H
+}
+
+#endif

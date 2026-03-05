@@ -24,7 +24,7 @@ inline void random_bytes(unsigned char* out, size_t out_len) {
         throw std::runtime_error("RAND_bytes failed");
     }
 }
-} // namespace OpenSSL
+}
 
 class CL_HSMqk_Part_Dec_ZKProof {
 public:
@@ -176,6 +176,6 @@ private:
     OpenSSL::ECPoint s_;
 };
 
-} // namespace BICYCL
+}
 
-#endif // TRECDSA_BICYCL_COMPAT_H
+#endif

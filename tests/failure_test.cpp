@@ -8,10 +8,9 @@
 namespace {
 
 bool expect_insufficient_parties_throw() {
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, 5, 2, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, 5, 2);
     trecdsa::Protocol protocol(params);
-    protocol.dkg();
+    protocol.run_dkg();
 
     const std::set<size_t> selected_parties = {1, 2};
     std::vector<unsigned char> message;
@@ -26,10 +25,9 @@ bool expect_insufficient_parties_throw() {
 }
 
 bool expect_out_of_range_party_throw() {
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, 5, 2, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, 5, 2);
     trecdsa::Protocol protocol(params);
-    protocol.dkg();
+    protocol.run_dkg();
 
     const std::set<size_t> selected_parties = {1, 2, 6};
     std::vector<unsigned char> message;
@@ -44,10 +42,9 @@ bool expect_out_of_range_party_throw() {
 }
 
 bool expect_empty_message_throw() {
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, 5, 2, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, 5, 2);
     trecdsa::Protocol protocol(params);
-    protocol.dkg();
+    protocol.run_dkg();
 
     const std::set<size_t> selected_parties = {1, 2, 3};
     const std::vector<unsigned char> empty_message;
@@ -61,10 +58,9 @@ bool expect_empty_message_throw() {
 }
 
 bool expect_tampered_message_fails_verify() {
-    trecdsa::RandGen random_generator;
-    trecdsa::GroupParams params(trecdsa::SecLevel::_128, 5, 2, random_generator);
+    trecdsa::GroupParams params(trecdsa::SecurityLevel::_128, 5, 2);
     trecdsa::Protocol protocol(params);
-    protocol.dkg();
+    protocol.run_dkg();
 
     const std::set<size_t> selected_parties = {1, 2, 3};
     std::vector<unsigned char> message;
@@ -78,7 +74,7 @@ bool expect_tampered_message_fails_verify() {
     return !protocol.verify(signatures, tampered_message);
 }
 
-} // namespace
+}
 
 int main() {
     if (!expect_insufficient_parties_throw()) return 1;
