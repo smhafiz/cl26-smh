@@ -2,7 +2,7 @@
 #include <iostream>
 #include <chrono>
 
-#include "../include/Protocol.h"
+#include "Protocol.h"
 
 using namespace BICYCL;
 
