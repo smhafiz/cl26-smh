@@ -10,7 +10,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_subdirectory(include/bicycl EXCLUDE_FROM_ALL)
+set(TRECDSA_BICYCL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/bicycl")
+if(NOT EXISTS "${TRECDSA_BICYCL_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "Could not find bicycl dependency under include/.")
+endif()
+add_subdirectory("${TRECDSA_BICYCL_DIR}" "${CMAKE_BINARY_DIR}/deps/bicycl" EXCLUDE_FROM_ALL)
+
+get_target_property(BICYCL_INTERFACE_INCLUDES bicycl INTERFACE_INCLUDE_DIRECTORIES)
+if(BICYCL_INTERFACE_INCLUDES)
+    set_property(TARGET bicycl PROPERTY INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${BICYCL_INTERFACE_INCLUDES}")
+endif()
 
 find_library(GMP_LIBRARY gmp REQUIRED)
 find_library(GMPXX_LIBRARY gmpxx REQUIRED)
@@ -40,15 +49,15 @@ elseif(MSVC)
     endif()
 endif()
 
-add_library(trecdsa_core
-    src/protocol/party.cpp
-    src/protocol/protocol.cpp
-    src/protocol/utils.cpp
+add_library(trecdsa_core SHARED
+    src/protocol/protocol_unit.cpp
 )
 
 target_include_directories(trecdsa_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(trecdsa_core
