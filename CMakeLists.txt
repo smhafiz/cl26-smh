@@ -41,9 +41,9 @@ elseif(MSVC)
 endif()
 
 add_library(trecdsa_core
-    src/Party.cpp
-    src/Protocol.cpp
-    src/Utils.cpp
+    src/protocol/party.cpp
+    src/protocol/protocol.cpp
+    src/protocol/utils.cpp
 )
 
 target_include_directories(trecdsa_core

@@ -123,6 +123,8 @@ void Protocol::dkg()
     }
 
     // Initialize parties
+    parties_.clear();
+    parties_.reserve(n);
     for(size_t i = 0; i < n; ++i) {
         parties_.emplace_back(params_, i+1, pk, pk_list, sk_list[i], X, Xi_list, xi_list[i]);
     }

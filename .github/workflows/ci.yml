@@ -44,9 +44,9 @@ jobs:
         run: |
           clang-tidy -p build \
             apps/cli/main.cpp \
-            src/Party.cpp \
-            src/Protocol.cpp \
-            src/Utils.cpp \
+            src/protocol/party.cpp \
+            src/protocol/protocol.cpp \
+            src/protocol/utils.cpp \
             tests/smoke_test.cpp \
             tests/failure_test.cpp \
             tests/api_test.cpp
