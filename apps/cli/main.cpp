@@ -27,7 +27,7 @@ int main()
     std::cout << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<trecdsa::Signature *> signature_set(party_set.size(), nullptr);
+    std::vector<trecdsa::Signature> signature_set;
     protocol.run(party_set, message, signature_set);
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -40,10 +40,6 @@ int main()
     else
     {
         std::cout << "run fail" << std::endl;
-    }
-
-    for(trecdsa::Signature* ptr : signature_set) {
-        delete ptr;
     }
 
     return 0;

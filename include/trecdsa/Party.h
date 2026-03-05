@@ -1,12 +1,14 @@
 #ifndef TRECDSA_PARTY_H
 #define TRECDSA_PARTY_H
 
+#include <functional>
 #include <memory>
 #include <set>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
 
+#include <trecdsa/Errors.h>
 #include <trecdsa/Types.h>
 
 namespace trecdsa {
@@ -33,12 +35,11 @@ public:
               const BICYCL::OpenSSL::ECPoint& Q2,
               const CommitmentSecret& r) const;
 
-    void handleRoundOne(RoundOneData** send_data);
-    void handleRoundTwo(const std::vector<RoundOneData*>& data, RoundTwoData** send_data);
-    void handleRoundThree(const std::vector<RoundTwoData*>& data,
-                          const std::vector<unsigned char>& m,
-                          RoundThreeData** send_data);
-    void handleOffline(const std::vector<RoundThreeData*>& data, Signature** send_data);
+    RoundOneData handleRoundOne();
+    RoundTwoData handleRoundTwo(const std::vector<std::reference_wrapper<const RoundOneData>>& data);
+    RoundThreeData handleRoundThree(const std::vector<std::reference_wrapper<const RoundTwoData>>& data,
+                                    const std::vector<unsigned char>& m);
+    Signature handleOffline(const std::vector<std::reference_wrapper<const RoundThreeData>>& data);
     bool verify(const Signature& signature, const std::vector<unsigned char>& m) const;
 
 private:

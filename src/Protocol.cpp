@@ -2,6 +2,7 @@
 // Created by qsang on 24-10-12.
 //
 #include <cmath>
+#include <functional>
 #include <numeric>
 #include <set>
 #include <vector>
@@ -129,53 +130,79 @@ void Protocol::dkg()
     sig_public_key_ = OpenSSL::ECPoint(ec_group, X);
 }
 
-void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned char>& message, std::vector<Signature*>& data_set_for_offline) {
+std::vector<Signature> Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned char>& message) {
+    std::vector<Signature> data_set_for_offline;
+    run(party_set, message, data_set_for_offline);
+    return data_set_for_offline;
+}
+
+void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned char>& message, std::vector<Signature>& data_set_for_offline) {
+    validate_inputs(party_set, message);
+
     for(auto& party : parties_)
     {
         party.setPartySet(party_set);
     }
 
-    std::vector<RoundOneData*> data_set_for_one(party_set.size(), nullptr);
-    std::vector<RoundTwoData*> data_set_for_two(party_set.size(), nullptr);
-    std::vector<RoundThreeData*> data_set_for_three(party_set.size(), nullptr);
+    std::vector<RoundOneData> data_set_for_one;
+    std::vector<std::reference_wrapper<const RoundOneData>> data_set_for_one_view;
+    data_set_for_one.reserve(party_set.size());
+    data_set_for_one_view.reserve(party_set.size());
+
+    std::vector<RoundTwoData> data_set_for_two;
+    std::vector<std::reference_wrapper<const RoundTwoData>> data_set_for_two_view;
+    data_set_for_two.reserve(party_set.size());
+    data_set_for_two_view.reserve(party_set.size());
+
+    std::vector<RoundThreeData> data_set_for_three;
+    std::vector<std::reference_wrapper<const RoundThreeData>> data_set_for_three_view;
+    data_set_for_three.reserve(party_set.size());
+    data_set_for_three_view.reserve(party_set.size());
+    data_set_for_offline.clear();
+    data_set_for_offline.reserve(party_set.size());
 
     // Execute Round 1
-    size_t index = 0;
     for(auto& i : party_set) {
-        parties_[i-1].handleRoundOne(&data_set_for_one[index++]);
+        data_set_for_one.push_back(parties_[i-1].handleRoundOne());
+    }
+    for(const RoundOneData& data : data_set_for_one) {
+        data_set_for_one_view.push_back(std::cref(data));
     }
 
     // Execute Round 2
-    index = 0;
     for(auto& i : party_set) {
-        parties_[i-1].handleRoundTwo(data_set_for_one, &data_set_for_two[index++]);
+        data_set_for_two.push_back(parties_[i-1].handleRoundTwo(data_set_for_one_view));
+    }
+    for(const RoundTwoData& data : data_set_for_two) {
+        data_set_for_two_view.push_back(std::cref(data));
     }
 
     // Execute Round 3
-    index = 0;
     for(auto& i : party_set){
-        parties_[i-1].handleRoundThree(data_set_for_two, message, &data_set_for_three[index++]);
+        data_set_for_three.push_back(parties_[i-1].handleRoundThree(data_set_for_two_view, message));
+    }
+    for(const RoundThreeData& data : data_set_for_three) {
+        data_set_for_three_view.push_back(std::cref(data));
     }
 
     // Execute Offline
-    index = 0;
     for(auto& i : party_set){
-        parties_[i-1].handleOffline(data_set_for_three, &data_set_for_offline[index++]);
-    }
-
-    for(RoundOneData* ptr : data_set_for_one) {
-        delete ptr;
-    }
-    for(RoundTwoData* ptr : data_set_for_two) {
-        delete ptr;
-    }
-    for(RoundThreeData* ptr : data_set_for_three) {
-        delete ptr;
+        data_set_for_offline.push_back(parties_[i-1].handleOffline(data_set_for_three_view));
     }
 }
 
-bool Protocol::verify(const std::vector<Signature*>& ecdsa_sig, const std::vector<unsigned char>& message) const
+bool Protocol::verify(const std::vector<Signature>& ecdsa_sig, const std::vector<unsigned char>& message) const
 {
+    if (parties_.empty()) {
+        throw ProtocolError("dkg must be run before verify");
+    }
+    if (ecdsa_sig.empty()) {
+        throw ProtocolError("signature set cannot be empty");
+    }
+    if (message.empty()) {
+        throw ProtocolError("message cannot be empty");
+    }
+
     // Verify signatures
     OpenSSL::BN h (params_.H(message));
     OpenSSL::BN inv_s;
@@ -185,17 +212,34 @@ bool Protocol::verify(const std::vector<Signature*>& ecdsa_sig, const std::vecto
     bool flag = true;
     for(const auto& signature : ecdsa_sig)
     {
-        params_.ec_group.inverse_mod_order(inv_s, signature->s);
+        params_.ec_group.inverse_mod_order(inv_s, signature.s);
         params_.ec_group.mul_mod_order (u1, inv_s, h);
-        params_.ec_group.mul_mod_order (u2, inv_s, signature->rx);
+        params_.ec_group.mul_mod_order (u2, inv_s, signature.rx);
         params_.ec_group.scal_mul(R, u1, u2, sig_public_key_);
 
         OpenSSL::BN rx;
         params_.ec_group.x_coord_of_point (rx, R);
         params_.ec_group.mod_order (rx, rx);
-        flag &= (rx == signature->rx);
+        flag &= (rx == signature.rx);
     }
     return flag;
+}
+
+void Protocol::validate_inputs(const std::set<size_t>& party_set, const std::vector<unsigned char>& message) const {
+    if (parties_.empty()) {
+        throw ProtocolError("dkg must be run before protocol execution");
+    }
+    if (party_set.size() < params_.t + 1) {
+        throw ProtocolError("party set must contain at least threshold + 1 parties");
+    }
+    for (size_t party_id : party_set) {
+        if (party_id < 1 || party_id > params_.n) {
+            throw ProtocolError("party id is out of range");
+        }
+    }
+    if (message.empty()) {
+        throw ProtocolError("message cannot be empty");
+    }
 }
 
 const GroupParams& Protocol::params() const noexcept {
