@@ -16,6 +16,8 @@ Current vendored dependency in this workspace:
 ## Building
 
 ```bash
+git submodule sync --recursive
+git submodule update --init --recursive
 cmake -S . -B build
 cmake --build build -j
 ```

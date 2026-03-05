@@ -1,11 +1,11 @@
 #ifndef TRECDSA_PROTOCOL_H
 #define TRECDSA_PROTOCOL_H
 
+#include <memory>
 #include <set>
 #include <vector>
 
 #include <trecdsa/Errors.h>
-#include <trecdsa/Party.h>
 #include <trecdsa/Types.h>
 
 namespace trecdsa {
@@ -13,6 +13,12 @@ namespace trecdsa {
 class Protocol {
 public:
     explicit Protocol(GroupParams& params);
+    ~Protocol();
+    Protocol(Protocol&& other) noexcept;
+    Protocol& operator=(Protocol&& other) noexcept;
+
+    Protocol(const Protocol&) = delete;
+    Protocol& operator=(const Protocol&) = delete;
 
     void dkg();
     std::vector<Signature> run(const std::set<size_t>& party_set, const std::vector<unsigned char>& message);
@@ -26,9 +32,8 @@ public:
 private:
     void validate_inputs(const std::set<size_t>& party_set, const std::vector<unsigned char>& message) const;
 
-    GroupParams& params_;
-    BICYCL::OpenSSL::ECPoint sig_public_key_;
-    std::vector<Party> parties_;
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace trecdsa

@@ -24,7 +24,7 @@ void Party::setPartySet(const std::set<size_t>& party_set)
 
 std::tuple<Commitment, CommitmentSecret> Party::commit(const OpenSSL::ECPoint &Q) const
 {
-    size_t nbytes = static_cast<size_t>(params.sec_level) >> 3;
+    size_t nbytes = params.sec_level.nbits() / 8;
     CommitmentSecret r(nbytes);
     OpenSSL::random_bytes (r.data(), nbytes);
     return std::make_tuple(params.H(r, OpenSSL::ECPointGroupCRefPair(Q, params.ec_group)), r);
@@ -32,7 +32,7 @@ std::tuple<Commitment, CommitmentSecret> Party::commit(const OpenSSL::ECPoint &Q
 
 std::tuple<Commitment, CommitmentSecret> Party::commit(const OpenSSL::ECPoint &Q1, const OpenSSL::ECPoint &Q2) const
 {
-    size_t nbytes = static_cast<size_t>(params.sec_level) >> 3;
+    size_t nbytes = params.sec_level.nbits() / 8;
     CommitmentSecret r(nbytes);
     OpenSSL::random_bytes (r.data(), nbytes);
     return std::make_tuple (params.H(r, OpenSSL::ECPointGroupCRefPair (Q1, params.ec_group), OpenSSL::ECPointGroupCRefPair (Q2, params.ec_group)), r);
@@ -54,8 +54,8 @@ RoundOneData Party::handleRoundOne()
 {
     RandGen randgen;
 
-    OpenSSL::BN phi_share = params.ec_group.random_mod_order();
-    OpenSSL::BN k_share = params.ec_group.random_mod_order();
+    OpenSSL::BN phi_share = params.ec_group.random_mod_order(randgen);
+    OpenSSL::BN k_share = params.ec_group.random_mod_order(randgen);
     OpenSSL::ECPoint R_share(params.ec_group, k_share);
     Mpz r(randgen.random_mpz(params.cl_pp.encrypt_randomness_bound()));
     CL_HSMqk::ClearText ct (params.cl_pp, static_cast<Mpz>(phi_share));
@@ -65,7 +65,7 @@ RoundOneData Party::handleRoundOne()
     CommitmentSecret open_i;
     std::tie(com_i, open_i) = commit(R_share);
 
-    ECNIZKProof zk_proof_dl(params.ec_group, params.H, k_share);
+    ECNIZKProof zk_proof_dl(params.ec_group, params.H, randgen, k_share);
     CL_HSMqk_ZKAoKProof zk_proof_cl_enc(params.cl_pp, params.H, pk, enc_phi_share, ct, r, randgen);
 
     round1LocalData = std::make_unique<RoundOneLocalData>(id, params.ec_group, phi_share, k_share, R_share, enc_phi_share, com_i, open_i, zk_proof_dl);

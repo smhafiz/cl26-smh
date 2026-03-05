@@ -7,26 +7,38 @@
 #include <set>
 #include <vector>
 
+#include <trecdsa/Party.h>
 #include <trecdsa/Protocol.h>
 #include <trecdsa/Utils.h>
 
 namespace trecdsa {
 namespace OpenSSL = BICYCL::OpenSSL;
 
-Protocol::Protocol(GroupParams& params) : params_(params), sig_public_key_(OpenSSL::ECPoint(params.ec_group))
-{
-    parties_.reserve(params.n);
-}
+struct Protocol::Impl {
+    explicit Impl(GroupParams& p)
+        : params(p), sig_public_key(OpenSSL::ECPoint(p.ec_group)) {
+        parties.reserve(p.n);
+    }
+
+    GroupParams& params;
+    OpenSSL::ECPoint sig_public_key;
+    std::vector<Party> parties;
+};
+
+Protocol::Protocol(GroupParams& params) : impl_(std::make_unique<Impl>(params)) {}
+Protocol::~Protocol() = default;
+Protocol::Protocol(Protocol&& other) noexcept = default;
+Protocol& Protocol::operator=(Protocol&& other) noexcept = default;
 
 void Protocol::dkg()
 {
     RandGen randgen;
 
-    const CL_HSMqk& cl_pp = params_.cl_pp;
-    const OpenSSL::ECGroup& ec_group = params_.ec_group;
-    const size_t n = params_.n;
-    const size_t t = params_.t;
-    const Mpz& delta = params_.delta;
+    const CL_HSMqk& cl_pp = impl_->params.cl_pp;
+    const OpenSSL::ECGroup& ec_group = impl_->params.ec_group;
+    const size_t n = impl_->params.n;
+    const size_t t = impl_->params.t;
+    const Mpz& delta = impl_->params.delta;
 
     // Calculate coefficient bound
     Mpz coff_bound;
@@ -83,7 +95,7 @@ void Protocol::dkg()
 
     // For ECDSA DKG
     std::vector<OpenSSL::BN> xi_list(n);
-    OpenSSL::BN u(ec_group.random_mod_order());
+    OpenSSL::BN u(ec_group.random_mod_order(randgen));
     OpenSSL::ECPoint X(ec_group, u);
 
     std::vector<OpenSSL::BN> coefficient;
@@ -92,7 +104,7 @@ void Protocol::dkg()
     coefficient_group.reserve(t);
 
     for (size_t k = 0; k < t; ++k) {
-        coefficient.push_back(ec_group.random_mod_order());
+        coefficient.push_back(ec_group.random_mod_order(randgen));
         coefficient_group.emplace_back(ec_group, coefficient.back());
     }
 
@@ -123,13 +135,13 @@ void Protocol::dkg()
     }
 
     // Initialize parties
-    parties_.clear();
-    parties_.reserve(n);
+    impl_->parties.clear();
+    impl_->parties.reserve(n);
     for(size_t i = 0; i < n; ++i) {
-        parties_.emplace_back(params_, i+1, pk, pk_list, sk_list[i], X, Xi_list, xi_list[i]);
+        impl_->parties.emplace_back(impl_->params, i+1, pk, pk_list, sk_list[i], X, Xi_list, xi_list[i]);
     }
 
-    sig_public_key_ = OpenSSL::ECPoint(ec_group, X);
+    impl_->sig_public_key = OpenSSL::ECPoint(ec_group, X);
 }
 
 std::vector<Signature> Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned char>& message) {
@@ -141,7 +153,7 @@ std::vector<Signature> Protocol::run(const std::set<size_t>& party_set, const st
 void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned char>& message, std::vector<Signature>& data_set_for_offline) {
     validate_inputs(party_set, message);
 
-    for(auto& party : parties_)
+    for(auto& party : impl_->parties)
     {
         party.setPartySet(party_set);
     }
@@ -165,7 +177,7 @@ void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned
 
     // Execute Round 1
     for(auto& i : party_set) {
-        data_set_for_one.push_back(parties_[i-1].handleRoundOne());
+        data_set_for_one.push_back(impl_->parties[i-1].handleRoundOne());
     }
     for(const RoundOneData& data : data_set_for_one) {
         data_set_for_one_view.push_back(std::cref(data));
@@ -173,7 +185,7 @@ void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned
 
     // Execute Round 2
     for(auto& i : party_set) {
-        data_set_for_two.push_back(parties_[i-1].handleRoundTwo(data_set_for_one_view));
+        data_set_for_two.push_back(impl_->parties[i-1].handleRoundTwo(data_set_for_one_view));
     }
     for(const RoundTwoData& data : data_set_for_two) {
         data_set_for_two_view.push_back(std::cref(data));
@@ -181,7 +193,7 @@ void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned
 
     // Execute Round 3
     for(auto& i : party_set){
-        data_set_for_three.push_back(parties_[i-1].handleRoundThree(data_set_for_two_view, message));
+        data_set_for_three.push_back(impl_->parties[i-1].handleRoundThree(data_set_for_two_view, message));
     }
     for(const RoundThreeData& data : data_set_for_three) {
         data_set_for_three_view.push_back(std::cref(data));
@@ -189,13 +201,13 @@ void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned
 
     // Execute Offline
     for(auto& i : party_set){
-        data_set_for_offline.push_back(parties_[i-1].handleOffline(data_set_for_three_view));
+        data_set_for_offline.push_back(impl_->parties[i-1].handleOffline(data_set_for_three_view));
     }
 }
 
 bool Protocol::verify(const std::vector<Signature>& ecdsa_sig, const std::vector<unsigned char>& message) const
 {
-    if (parties_.empty()) {
+    if (impl_->parties.empty()) {
         throw ProtocolError("dkg must be run before verify");
     }
     if (ecdsa_sig.empty()) {
@@ -206,36 +218,36 @@ bool Protocol::verify(const std::vector<Signature>& ecdsa_sig, const std::vector
     }
 
     // Verify signatures
-    OpenSSL::BN h (params_.H(message));
+    OpenSSL::BN h (impl_->params.H(message));
     OpenSSL::BN inv_s;
     OpenSSL::BN u1, u2;
-    OpenSSL::ECPoint R (params_.ec_group);
+    OpenSSL::ECPoint R (impl_->params.ec_group);
 
     bool flag = true;
     for(const auto& signature : ecdsa_sig)
     {
-        params_.ec_group.inverse_mod_order(inv_s, signature.s);
-        params_.ec_group.mul_mod_order (u1, inv_s, h);
-        params_.ec_group.mul_mod_order (u2, inv_s, signature.rx);
-        params_.ec_group.scal_mul(R, u1, u2, sig_public_key_);
+        impl_->params.ec_group.inverse_mod_order(inv_s, signature.s);
+        impl_->params.ec_group.mul_mod_order (u1, inv_s, h);
+        impl_->params.ec_group.mul_mod_order (u2, inv_s, signature.rx);
+        impl_->params.ec_group.scal_mul(R, u1, u2, impl_->sig_public_key);
 
         OpenSSL::BN rx;
-        params_.ec_group.x_coord_of_point (rx, R);
-        params_.ec_group.mod_order (rx, rx);
+        impl_->params.ec_group.x_coord_of_point (rx, R);
+        impl_->params.ec_group.mod_order (rx, rx);
         flag &= (rx == signature.rx);
     }
     return flag;
 }
 
 void Protocol::validate_inputs(const std::set<size_t>& party_set, const std::vector<unsigned char>& message) const {
-    if (parties_.empty()) {
+    if (impl_->parties.empty()) {
         throw ProtocolError("dkg must be run before protocol execution");
     }
-    if (party_set.size() < params_.t + 1) {
+    if (party_set.size() < impl_->params.t + 1) {
         throw ProtocolError("party set must contain at least threshold + 1 parties");
     }
     for (size_t party_id : party_set) {
-        if (party_id < 1 || party_id > params_.n) {
+        if (party_id < 1 || party_id > impl_->params.n) {
             throw ProtocolError("party id is out of range");
         }
     }
@@ -245,15 +257,15 @@ void Protocol::validate_inputs(const std::set<size_t>& party_set, const std::vec
 }
 
 const GroupParams& Protocol::params() const noexcept {
-    return params_;
+    return impl_->params;
 }
 
 const OpenSSL::ECPoint& Protocol::signature_public_key() const noexcept {
-    return sig_public_key_;
+    return impl_->sig_public_key;
 }
 
 size_t Protocol::party_count() const noexcept {
-    return parties_.size();
+    return impl_->parties.size();
 }
 
 } // namespace trecdsa

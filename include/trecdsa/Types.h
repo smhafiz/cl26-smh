@@ -5,7 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "bicycl/bicycl.hpp"
+#include <bicycl.hpp>
+#include <trecdsa/compat/bicycl_compat.h>
 
 namespace trecdsa {
 

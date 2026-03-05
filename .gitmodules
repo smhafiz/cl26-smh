@@ -1,0 +1,3 @@
+[submodule "include/bicycl"]
+	path = include/bicycl
+	url = https://gite.lirmm.fr/crypto/bicycl.git
