@@ -1,16 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 DOCKER_IMAGE_NAME="threshold_ecdsa_builder"
 
-if [ $DOCKER ];then
-	cd /project
-	rm -rf ./build
-	mkdir build && cd build
-  cmake ..
-  make -j$(nproc)
-
+if [ "${DOCKER:-}" = "on" ]; then
+    cd /project
+    rm -rf ./build
+    cmake -S . -B build
+    cmake --build build -j"$(nproc)"
 else
-  sudo docker build -t "$DOCKER_IMAGE_NAME" .
-	sudo docker run --rm -v $PWD:/project "$DOCKER_IMAGE_NAME"
-	sudo docker image rm "$DOCKER_IMAGE_NAME"
+    sudo docker build -t "${DOCKER_IMAGE_NAME}" .
+    sudo docker run --rm -v "${PWD}:/project" "${DOCKER_IMAGE_NAME}"
+    sudo docker image rm "${DOCKER_IMAGE_NAME}"
 fi

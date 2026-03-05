@@ -4,22 +4,19 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /project
 
-RUN apt-get clean \ && apt-get -y update && apt-get -y install \
-    software-properties-common \
-    wget \
-    build-essential \
-    libssl-dev \
-    libgmp-dev \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        libgmp-dev \
+        libssl-dev \
+        wget \
+    && wget -q https://github.com/Kitware/CMake/releases/download/v3.29.6/cmake-3.29.6-linux-x86_64.sh \
+    && sh cmake-3.29.6-linux-x86_64.sh --skip-license --prefix=/usr/local \
+    && rm -f cmake-3.29.6-linux-x86_64.sh \
+    && rm -rf /var/lib/apt/lists/* \
     && echo "/usr/lib/x86_64-linux-gnu" >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
-
-
-RUN cd /opt && wget https://github.com/Kitware/CMake/releases/download/v3.29.6/cmake-3.29.6.tar.gz \
-    && tar -zxvf cmake-3.29.6.tar.gz \
-    &&  cd cmake-3.29.6 \
-    && ./bootstrap \
-    && make -j$(nproc) && make install \
-    && rm ../cmake-3.29.6.tar.gz
 
 COPY ./build.sh /
 
