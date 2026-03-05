@@ -1,25 +1,60 @@
-# Three Round Threshold ECDSA based  Threshold CL Encryption
+# Three-Round Multiparty ECDSA
 
-This project provides the proof-of-concept implementation for the [Three-Round (Robust) Threshold ECDSA from Threshold CL Encryption](https://dl.acm.org/doi/10.1007/978-981-96-9095-4_12), and includes two versions corresponding to different security properties of threshold ECDSA signature protocols:
+This repository provides a proof-of-concept implementation of three-round threshold ECDSA based on threshold CL encryption.
 
-- The **`main`** branch implements the **TECDSA-Normal** protocol.
+## Branches
 
-- The **`robust-tecdsa`** branch implements the **TECDSA-Robust** protocol.
+- `main`: TECDSA-Normal
+- `robust-tecdsa`: TECDSA-Robust
 
-## Build & Run
+## Dependency Pinning
 
-This project uses Docker for cross-compilation, providing a reproducible build environment and complete toolchain isolation.
+Current vendored dependency in this workspace:
 
-**Build Steps**
+- `bicycl`: local snapshot under `include/bicycl`
 
-```shell
-git clone https://github.com/Jiangjiang-jiang/Three-Round-Multiparty-ECDSA.git
-cd ./Three-Round-Multiparty-ECDSA
-chmod +x build.sh
+## Building
+
+```bash
+cmake -S . -B build
+cmake --build build -j
+```
+
+## Running
+
+```bash
+./build/Three-Round-Multiparty-ECDSA
+```
+
+Default runtime parameters are currently set in `apps/cli/main.cpp`:
+
+- party count `n = 5`
+- threshold `t = 4`
+
+## Testing
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+## Quality Gates
+
+```bash
+cmake -S . -B build-werror -DTRECDSA_WARNINGS_AS_ERRORS=ON
+cmake --build build-werror -j
+ctest --test-dir build-werror --output-on-failure
+
+cmake -S . -B build-asan -DTRECDSA_ENABLE_SANITIZERS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build-asan -j
+ctest --test-dir build-asan --output-on-failure
+```
+
+## Docker (Optional)
+
+```bash
 bash build.sh
 ```
 
-After the build completes, the executable will be located at `./build/Three-Round-Multiparty-ECDSA` with specified parties number $n$ and threshold value $t$, which can be configured in `src/main.cpp`.
+## License
 
-
-
+This project is licensed under the MIT License. See `LICENSE`.
