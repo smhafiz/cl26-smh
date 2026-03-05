@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <set>
 #include <vector>
 
@@ -65,8 +66,12 @@ bool expect_verify_without_dkg_throw() {
 }
 
 int main() {
-    if (!expect_public_api_getters_work()) return 1;
-    if (!expect_run_overloads_match()) return 2;
-    if (!expect_verify_without_dkg_throw()) return 3;
-    return 0;
+    try {
+        if (!expect_public_api_getters_work()) { return EXIT_FAILURE; }
+        if (!expect_run_overloads_match()) { return EXIT_FAILURE; }
+        if (!expect_verify_without_dkg_throw()) { return EXIT_FAILURE; }
+        return EXIT_SUCCESS;
+    } catch (const std::exception&) {
+        return EXIT_FAILURE;
+    }
 }

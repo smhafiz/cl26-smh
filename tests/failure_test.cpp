@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <set>
 #include <vector>
 
@@ -77,9 +78,13 @@ bool expect_tampered_message_fails_verify() {
 }
 
 int main() {
-    if (!expect_insufficient_parties_throw()) return 1;
-    if (!expect_out_of_range_party_throw()) return 2;
-    if (!expect_empty_message_throw()) return 3;
-    if (!expect_tampered_message_fails_verify()) return 4;
-    return 0;
+    try {
+        if (!expect_insufficient_parties_throw()) { return EXIT_FAILURE; }
+        if (!expect_out_of_range_party_throw()) { return EXIT_FAILURE; }
+        if (!expect_empty_message_throw()) { return EXIT_FAILURE; }
+        if (!expect_tampered_message_fails_verify()) { return EXIT_FAILURE; }
+        return EXIT_SUCCESS;
+    } catch (const std::exception&) {
+        return EXIT_FAILURE;
+    }
 }
