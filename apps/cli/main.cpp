@@ -2,24 +2,23 @@
 #include <iostream>
 #include <chrono>
 
-#include "Protocol.h"
-
-using namespace BICYCL;
+#include <trecdsa/Protocol.h>
+#include <trecdsa/Utils.h>
 
 int main()
 {
-    RandGen rng;
+    trecdsa::RandGen rng;
     size_t n = 5;
     size_t t = 4;
 
-    GroupParams params(SecLevel::_128, n, t, rng);
+    trecdsa::GroupParams params(trecdsa::SecLevel::_128, n, t, rng);
 
-    Protocol protocol(params);
+    trecdsa::Protocol protocol(params);
     protocol.dkg();
 
-    std::set<size_t> party_set = select_parties(rng, n, t);
+    std::set<size_t> party_set = trecdsa::select_parties(rng, n, t);
     std::vector<unsigned char> message;
-    randomize_message(message);
+    trecdsa::randomize_message(message);
 
     std::cout << "Selected parties: ";
     for (const auto& id : party_set) {
@@ -28,7 +27,7 @@ int main()
     std::cout << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<Signature *> signature_set(party_set.size(), nullptr);
+    std::vector<trecdsa::Signature *> signature_set(party_set.size(), nullptr);
     protocol.run(party_set, message, signature_set);
     auto end = std::chrono::high_resolution_clock::now();
 
@@ -43,7 +42,7 @@ int main()
         std::cout << "run fail" << std::endl;
     }
 
-    for(Signature* ptr : signature_set) {
+    for(trecdsa::Signature* ptr : signature_set) {
         delete ptr;
     }
 

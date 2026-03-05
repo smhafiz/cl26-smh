@@ -2,9 +2,13 @@
 // Created by qsang on 24-10-12.
 //
 
-#include <vector>
 #include <set>
-#include "../include/Utils.h"
+#include <vector>
+
+#include <trecdsa/Utils.h>
+
+namespace trecdsa {
+namespace OpenSSL = BICYCL::OpenSSL;
 
 // Randomly generates a message of at least 4 bytes.
 void randomize_message(std::vector<unsigned char>& m) {
@@ -62,9 +66,9 @@ Mpz cl_lagrange_at_zero(const std::set<size_t>& S, size_t i, const Mpz& delta)
 }
 
 // Lagrange interpolation in the context of elliptic curves.
-OpenSSL::BN lagrange_at_zero(const OpenSSL::ECGroup &E, const std::set<size_t>& S, const size_t i)
+BICYCL::OpenSSL::BN lagrange_at_zero(const BICYCL::OpenSSL::ECGroup &E, const std::set<size_t>& S, const size_t i)
 {
-    OpenSSL::BN numerator, denominator, result;
+    BICYCL::OpenSSL::BN numerator, denominator, result;
 
     numerator = 1UL;
     denominator = 1UL;
@@ -84,3 +88,5 @@ OpenSSL::BN lagrange_at_zero(const OpenSSL::ECGroup &E, const std::set<size_t>& 
 
     return result;
 }
+
+} // namespace trecdsa

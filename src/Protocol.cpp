@@ -2,25 +2,30 @@
 // Created by qsang on 24-10-12.
 //
 #include <cmath>
+#include <numeric>
 #include <set>
 #include <vector>
-#include <numeric>
-#include "../include/Protocol.h"
 
-Protocol::Protocol(GroupParams& params) : params(params), sig_public_key(OpenSSL::ECPoint(params.ec_group))
+#include <trecdsa/Protocol.h>
+#include <trecdsa/Utils.h>
+
+namespace trecdsa {
+namespace OpenSSL = BICYCL::OpenSSL;
+
+Protocol::Protocol(GroupParams& params) : params_(params), sig_public_key_(OpenSSL::ECPoint(params.ec_group))
 {
-    S.reserve(params.n);
+    parties_.reserve(params.n);
 }
 
 void Protocol::dkg()
 {
     RandGen randgen;
 
-    const CL_HSMqk& cl_pp = params.cl_pp;
-    const OpenSSL::ECGroup& ec_group = params.ec_group;
-    const size_t n = params.n;
-    const size_t t = params.t;
-    const Mpz& delta = params.delta;
+    const CL_HSMqk& cl_pp = params_.cl_pp;
+    const OpenSSL::ECGroup& ec_group = params_.ec_group;
+    const size_t n = params_.n;
+    const size_t t = params_.t;
+    const Mpz& delta = params_.delta;
 
     // Calculate coefficient bound
     Mpz coff_bound;
@@ -118,14 +123,14 @@ void Protocol::dkg()
 
     // Initialize parties
     for(size_t i = 0; i < n; ++i) {
-        S.emplace_back(params, i+1, pk, pk_list, sk_list[i], X, Xi_list, xi_list[i]);
+        parties_.emplace_back(params_, i+1, pk, pk_list, sk_list[i], X, Xi_list, xi_list[i]);
     }
 
-    sig_public_key = OpenSSL::ECPoint(ec_group, X);
+    sig_public_key_ = OpenSSL::ECPoint(ec_group, X);
 }
 
 void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned char>& message, std::vector<Signature*>& data_set_for_offline) {
-    for(auto& party : S)
+    for(auto& party : parties_)
     {
         party.setPartySet(party_set);
     }
@@ -137,25 +142,25 @@ void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned
     // Execute Round 1
     size_t index = 0;
     for(auto& i : party_set) {
-        S[i-1].handleRoundOne(&data_set_for_one[index++]);
+        parties_[i-1].handleRoundOne(&data_set_for_one[index++]);
     }
 
     // Execute Round 2
     index = 0;
     for(auto& i : party_set) {
-        S[i-1].handleRoundTwo(data_set_for_one, &data_set_for_two[index++]);
+        parties_[i-1].handleRoundTwo(data_set_for_one, &data_set_for_two[index++]);
     }
 
     // Execute Round 3
     index = 0;
     for(auto& i : party_set){
-        S[i-1].handleRoundThree(data_set_for_two, message, &data_set_for_three[index++]);
+        parties_[i-1].handleRoundThree(data_set_for_two, message, &data_set_for_three[index++]);
     }
 
     // Execute Offline
     index = 0;
     for(auto& i : party_set){
-        S[i-1].handleOffline(data_set_for_three, &data_set_for_offline[index++]);
+        parties_[i-1].handleOffline(data_set_for_three, &data_set_for_offline[index++]);
     }
 
     for(RoundOneData* ptr : data_set_for_one) {
@@ -172,23 +177,37 @@ void Protocol::run(const std::set<size_t>& party_set, const std::vector<unsigned
 bool Protocol::verify(const std::vector<Signature*>& ecdsa_sig, const std::vector<unsigned char>& message) const
 {
     // Verify signatures
-    OpenSSL::BN h (params.H(message));
+    OpenSSL::BN h (params_.H(message));
     OpenSSL::BN inv_s;
     OpenSSL::BN u1, u2;
-    OpenSSL::ECPoint R (params.ec_group);
+    OpenSSL::ECPoint R (params_.ec_group);
 
     bool flag = true;
     for(const auto& signature : ecdsa_sig)
     {
-        params.ec_group.inverse_mod_order(inv_s, signature->s);
-        params.ec_group.mul_mod_order (u1, inv_s, h);
-        params.ec_group.mul_mod_order (u2, inv_s, signature->rx);
-        params.ec_group.scal_mul(R, u1, u2, sig_public_key);
+        params_.ec_group.inverse_mod_order(inv_s, signature->s);
+        params_.ec_group.mul_mod_order (u1, inv_s, h);
+        params_.ec_group.mul_mod_order (u2, inv_s, signature->rx);
+        params_.ec_group.scal_mul(R, u1, u2, sig_public_key_);
 
         OpenSSL::BN rx;
-        params.ec_group.x_coord_of_point (rx, R);
-        params.ec_group.mod_order (rx, rx);
+        params_.ec_group.x_coord_of_point (rx, R);
+        params_.ec_group.mod_order (rx, rx);
         flag &= (rx == signature->rx);
     }
     return flag;
 }
+
+const GroupParams& Protocol::params() const noexcept {
+    return params_;
+}
+
+const OpenSSL::ECPoint& Protocol::signature_public_key() const noexcept {
+    return sig_public_key_;
+}
+
+size_t Protocol::party_count() const noexcept {
+    return parties_.size();
+}
+
+} // namespace trecdsa

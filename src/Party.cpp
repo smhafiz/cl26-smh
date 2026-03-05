@@ -2,7 +2,11 @@
 // Created by qsang on 24-10-12.
 //
 
-#include "../include/Party.h"
+#include <trecdsa/Party.h>
+#include <trecdsa/Utils.h>
+
+namespace trecdsa {
+namespace OpenSSL = BICYCL::OpenSSL;
 
 Party::Party(GroupParams& params, const size_t id, const CL_HSMqk::PublicKey& pk, const std::vector<CL_HSMqk::PublicKey>& pki_vector, const CL_HSMqk::SecretKey& ski, const OpenSSL::ECPoint& X, std::vector<OpenSSL::ECPoint> &X_vector, const OpenSSL::BN& xi)
             : params(params), id(id), pk(pk), pki_vector(pki_vector), Xi_vector(), X(params.ec_group, X), ski(ski), xi(xi), S()
@@ -59,7 +63,7 @@ void Party::handleRoundOne(RoundOneData** send_data)
 
     Commitment com_i;
     CommitmentSecret open_i;
-    tie(com_i, open_i) = commit(R_share);
+    std::tie(com_i, open_i) = commit(R_share);
 
     ECNIZKProof zk_proof_dl(params.ec_group, params.H, k_share);
     CL_HSMqk_ZKAoKProof zk_proof_cl_enc(params.cl_pp, params.H, pk, enc_phi_share, ct, r, randgen);
@@ -250,3 +254,5 @@ CL_HSMqk::ClearText Party::agg_partial_ciphertext(const std::unordered_map<size_
     }
     return CL_HSMqk::ClearText(params.cl_pp, params.cl_pp.dlog_in_F(c2));
 }
+
+} // namespace trecdsa
