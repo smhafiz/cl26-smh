@@ -2,4 +2,3 @@ build/
 cmake-build-*/
 .idea/
 compile_commands.json
-reports/
